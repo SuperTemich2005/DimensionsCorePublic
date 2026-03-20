@@ -166,7 +166,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					-- Pull the player with the seat
 					if self:IsVehicle() then
 						if self:GetDriver() then
-							self:GetDriver():SetDimension(targetDim)
+							self:GetDriver():SetDimension(targetDim,true)
 						end
 					end
 
@@ -192,11 +192,11 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 		do -- Define SetDimension and GetDimension in Player
 			local meta = FindMetaTable("Player")
 
-			meta.SetDimension = function(self, targetDim)
+			meta.SetDimension = function(self, targetDim, force)
 				if not IsValid(self) then
 					return
 				end
-				if self:InVehicle() then
+				if self:InVehicle() and not force then
 					return
 				end -- Prevent a player from getting pulled out of the vehicle
 				if not targetDim then
@@ -760,7 +760,7 @@ end
 -- Edge case, if a player is somehow in a vehicle that isnt in the same dimension
 hook.Add("PlayerLeaveVehicle", "[DIMCORE] LeaveVehicle", function(ply, veh)
 	if ply:GetDimension() ~= veh:GetDimension() then
-		ply:SetDimension(veh:GetDimension())
+		ply:SetDimension(veh:GetDimension(),true)
 	end
 end)
 
