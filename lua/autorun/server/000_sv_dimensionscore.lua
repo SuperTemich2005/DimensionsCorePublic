@@ -127,11 +127,11 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				end
 			end
 
-			meta.SetDimension = function(self, targetDim)
+			meta.SetDimension = function(self, targetDim, force)
 				if not IsValid(self) then
 					return
 				end
-				if IsValid(self:GetParent()) then
+				if IsValid(self:GetParent()) and not force then
 					return
 				end -- Prevent a child from getting pulled in a dimension away from its parent
 				if not targetDim then
@@ -172,7 +172,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 
 					-- Propagate shift on children
 					for k, v in pairs(self:GetChildren()) do
-						v:SetDimension(targetDim)
+						v:SetDimension(targetDim,true)
 					end
 
 					-- Update net visibility of this entity to ALL players
@@ -230,6 +230,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						wep:SetDimension(targetDim)
 					end
 
+					DimCore.DumpDCT()
 					-- Also update visibility on ALL entities for this player
 					for _, ent in pairs(ents.GetAll()) do
 						if IsValid(ent:GetOwner()) and ent:IsWeapon() and ent:GetOwner() == self then
@@ -256,7 +257,6 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					end
 
 					-- Update net visibility of this entity to ALL players
-					DimCore.DumpDCT()
 					for _, ply in pairs(player.GetAll()) do
 						RecursiveSetPreventTransmit(self, ply, ply:GetDimension() ~= self:GetDimension())
 					end
