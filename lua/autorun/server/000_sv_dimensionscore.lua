@@ -157,6 +157,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					if not IsValid(self) then
 						return
 					end
+
 					-- Check if this entity is physical and make it enter the custom collision check loop if it's outside of default dimension
 					if IsValid(self:GetPhysicsObject()) and self:GetPhysicsObject():IsValid() then
 						self:SetCustomCollisionCheck(targetDim ~= DimCore.DEFAULT_DIMENSION)
@@ -166,13 +167,13 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					-- Pull the player with the seat
 					if self:IsVehicle() then
 						if self:GetDriver() then
-							self:GetDriver():SetDimension(targetDim,true)
+							self:GetDriver():SetDimension(targetDim, true)
 						end
 					end
 
 					-- Propagate shift on children
 					for k, v in pairs(self:GetChildren()) do
-						v:SetDimension(targetDim,true)
+						v:SetDimension(targetDim, true)
 					end
 
 					-- Update net visibility of this entity to ALL players
@@ -217,6 +218,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					DimCore.DimensionsTable[targetDim] = {}
 				end
 				DimCore.DimensionsTable[targetDim][self] = true
+				
 
 				timer.Simple(0, function() -- Sync
 					-- Check if this entity is physical and make it enter the custom collision check loop if it's outside of default dimension
@@ -226,13 +228,13 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					end
 
 					-- Handle player's entities (weapons and viewmodels and viewentities)
-					for _, wep in ipairs(self:GetWeapons()) do
-						wep:SetDimension(targetDim)
-					end
+					--for _, wep in ipairs(self:GetWeapons()) do
+					--wep:SetDimension(targetDim)
+					--end
 
 					DimCore.DumpDCT()
 					-- Also update visibility on ALL entities for this player
-					for _, ent in pairs(ents.GetAll()) do
+					for _, ent in ipairs(ents.GetAll()) do
 						if IsValid(ent:GetOwner()) and ent:IsWeapon() and ent:GetOwner() == self then
 							continue
 						end
@@ -257,7 +259,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					end
 
 					-- Update net visibility of this entity to ALL players
-					for _, ply in pairs(player.GetAll()) do
+					for _, ply in ipairs(player.GetAll()) do
 						RecursiveSetPreventTransmit(self, ply, ply:GetDimension() ~= self:GetDimension())
 					end
 					DimCore.RestoreDCT()
@@ -272,16 +274,28 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 		do -- Define SetDimension and GetDimension in Weapon
 			local meta = FindMetaTable("Weapon")
 
-			meta.SetDimension = function(self, targetDim)
-				if not targetDim then
-					targetDim = DimCore.DEFAULT_DIMENSION
-				end
+			--[[ meta.SetDimension = function(self, targetDim)
 				if not IsValid(self) then
 					return
 				end
+				if not targetDim then
+					targetDim = DimCore.DEFAULT_DIMENSION
+				end
 
 				-- Set dimension property
-				self:SetNW2String("TNMI_Dimension", targetDim)
+				if
+					self
+					and self.GetOwner
+					and IsValid(self:GetOwner())
+					and self:GetOwner().GetDimension
+					and self:GetOwner():GetDimension()
+				then
+					print("[DIMCORE] SetDimension called on ",self," owned by ",self:GetOwner())
+					self:SetNW2String("TNMI_Dimension", self:GetOwner():GetDimension())
+				else
+					print("[DIMCORE] SetDimension called on ",self,", but cannot get dimension of owner. Falling back to default dimension")
+					self:SetNW2String("TNMI_Dimension", DimCore.DEFAULT_DIMENSION)
+				end
 
 				timer.Simple(0, function() -- Wait a tick before applying changes.
 					if not IsValid(self) then
@@ -295,7 +309,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					end
 					DimCore.RestoreDCT()
 				end)
-			end
+			end]]
 
 			meta.GetDimension = function(self)
 				if
@@ -313,10 +327,12 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 		end
 
 		DimCore.DumpDCT()
-		for _, v in pairs(ents.GetAll()) do
-			v:SetDimension(DimCore.DEFAULT_DIMENSION)
+		for _, v in ipairs(ents.GetAll()) do
+			if v:GetDimension() ~= DimCore.DEFAULT_DIMENSION then
+				v:SetDimension(DimCore.DEFAULT_DIMENSION)
+			end
 		end
-		DimCore.RestoreDCT()
+		DimCore.RestoreDCT() --]]
 
 		-- Detour ents.GetAll to deal with all Find functions and more
 		do
@@ -425,6 +441,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 			local detour = ents.Create
 			ents.Create = function(class)
 				local creator = DimCore.LookupContext()
+				if class == "predictive_viewmodel" then print("Viewmodel spawn for ",creator) end
 				local r = detour(class)
 
 				DimCore.PushContext(r)
@@ -439,7 +456,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				return r
 			end
 		end
-		--
+
 		-- Detour util.TraceLine
 		do
 			print("[DIMCORE] Detoured util.TraceLine")
@@ -447,7 +464,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 			local recursiveDetour
 			recursiveDetour = function(traceConfig, callerDim)
 				local testResult = detour(traceConfig)
-				
+
 				if
 					(
 						testResult.Entity
@@ -644,56 +661,60 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				return r
 			end
 		end
-	end)
-end) -- Note: Nothing in this hook will hot-reload.
 
-hook.Add("OnEntityCreated", "[DIMCORE] Push entity into DCT on spawn", function(ent)
-	if not IsValid(ent) then
-		return
-	end -- wtf?
-	if
-		IsValid(DimCore:LookupContext())
-		and DimCore.LookupContext().GetDimension
-		and ent.SetDimension
-		and ent.GetDimension
-	then
-		ent:SetDimension(DimCore.LookupContext():GetDimension())
-	end
+		hook.Add("OnEntityCreated", "[DIMCORE] Push entity into DCT on spawn", function(ent)
+			-- Nilchecks
+			if not IsValid(ent) then
+				return
+			end
+			if ent:IsPlayer() then
+				return
+			end
+			if
+				IsValid(DimCore:LookupContext())
+				and DimCore.LookupContext().GetDimension
+				and ent.SetDimension
+				and ent.GetDimension
+			then
+				ent:SetDimension(DimCore.LookupContext():GetDimension())
+			end
 
-	timer.Simple(0, function()
-		DimCore.PopContext()
+			timer.Simple(0, function()
+				DimCore.PopContext()
 
-		if not (ent and IsValid(ent) and ent.GetTable and ent:GetTable()) then
-			return
-		end
+				if not (ent and IsValid(ent) and ent.GetTable and ent:GetTable()) then
+					return
+				end
 
-		for member, body in pairs(ent:GetTable()) do
-			if type(body) == "function" then
-				if member == "StartTouch" or member == "EndTouch" or member == "Touch" then
-					local detour = body
-					ent:GetTable()[member] = function(self, other)
-						if self and other and self:GetDimension() == other:GetDimension() then
-							DimCore.PushContext(self)
-							local r = { detour(self, other) }
-							DimCore.PopContext()
-							return unpack(r)
+				for member, body in pairs(ent:GetTable()) do
+					if type(body) == "function" then
+						if member == "StartTouch" or member == "EndTouch" or member == "Touch" then
+							local detour = body
+							ent:GetTable()[member] = function(self, other)
+								if self and other and self:GetDimension() == other:GetDimension() then
+									DimCore.PushContext(self)
+									local r = { detour(self, other) }
+									DimCore.PopContext()
+									return unpack(r)
+								else
+									return
+								end
+							end
 						else
-							return
+							local detour = body
+							ent:GetTable()[member] = function(...)
+								DimCore.PushContext(ent)
+								local r = { detour(...) }
+								DimCore.PopContext()
+								return unpack(r)
+							end
 						end
 					end
-				else
-					local detour = body
-					ent:GetTable()[member] = function(...)
-						DimCore.PushContext(ent)
-						local r = { detour(...) }
-						DimCore.PopContext()
-						return unpack(r)
-					end
 				end
-			end
-		end
+			end)
+		end)
 	end)
-end)
+end) -- Note: Nothing in this hook will hot-reload.
 
 -- Push player onto the context stack when they create an entity using Spawn Menu
 local hookSuffixes = { "Effect", "NPC", "Prop", "Ragdoll", "SENT", "SWEP", "Vehicle" }
@@ -707,12 +728,23 @@ for _, hookname in pairs(hookSuffixes) do
 end
 
 -- Hooks for putting players in dimensions
-local playerRespawnHooks = { "PlayerSpawn", "PlayerInitialSpawn" }
-for _, hookName in pairs(playerRespawnHooks) do
-	hook.Add(hookName, "[DIMCORE] Assign Dimension Values to Players", function(ply)
-		ply:SetDimension(DimCore.DEFAULT_DIMENSION)
-	end)
-end
+hook.Add("PlayerSpawn", "[DIMCORE] Assign Dimension Values to Players", function(ply)
+	print("[DIMCORE] ", ply, " regular spawn.")
+	ply:SetDimension(DimCore.DEFAULT_DIMENSION, true)
+end)
+hook.Add("PlayerInitialSpawn", "[DIMCORE] Reroute PlayerInitialSpawn call to a generic Spawn", function(ply)
+	print("[DIMCORE] ", ply, " initial spawn.")
+	--ply:SetDimension(DimCore.DEFAULT_DIMENSION, true)
+end)
+
+hook.Add("PlayerSelectSpawn", "[DIMCORE] Help the game decide on a spawnpoint", function(ply)
+	DimCore.DumpDCT()
+	local spawns = ents.FindByClass("info_player_start")
+	local random_entry = math.random(#spawns)
+	DimCore.RestoreDCT()
+
+	return spawns[random_entry]
+end)
 
 hook.Add("CreateEntityRagdoll", "[DIMCORE] Assign Dimension Values to Ragdolls", function(owner, doll)
 	timer.Simple(0, function()
@@ -760,7 +792,7 @@ end
 -- Edge case, if a player is somehow in a vehicle that isnt in the same dimension
 hook.Add("PlayerLeaveVehicle", "[DIMCORE] LeaveVehicle", function(ply, veh)
 	if ply:GetDimension() ~= veh:GetDimension() then
-		ply:SetDimension(veh:GetDimension(),true)
+		ply:SetDimension(veh:GetDimension(), true)
 	end
 end)
 
@@ -816,4 +848,9 @@ hook.Add("EntityRemoved", "[DIMCORE] Keep DimensionsTable clean", function(ent)
 		table.RemoveByValue(DimCore.DimensionsTable[ent:GetDimension()], ent)
 	end, function() end)
 end)
+
+hook.Add("PostEntityPaste", "[DIMCORE] Pull duplicated entities in a correct dimension", function(ply, ent)
+	ent:SetDimension(ply:GetDimension())
+end)
+
 print("[DIMCORE] Loading complete.")
