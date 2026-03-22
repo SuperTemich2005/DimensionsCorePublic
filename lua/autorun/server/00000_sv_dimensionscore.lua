@@ -218,7 +218,6 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					DimCore.DimensionsTable[targetDim] = {}
 				end
 				DimCore.DimensionsTable[targetDim][self] = true
-				
 
 				timer.Simple(0, function() -- Sync
 					-- Check if this entity is physical and make it enter the custom collision check loop if it's outside of default dimension
@@ -228,9 +227,13 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					end
 
 					-- Handle player's entities (weapons and viewmodels and viewentities)
-					--for _, wep in ipairs(self:GetWeapons()) do
-					--wep:SetDimension(targetDim)
-					--end
+					--[[ self:GetViewModel(0):SetDimension(targetDim) -- SetDimension on these doesn't work for some reason.
+					self:GetViewModel(1):SetDimension(targetDim)
+					self:GetViewModel(2):SetDimension(targetDim)
+					self:GetHands():SetDimension(targetDim) ]]
+					for _, wep in ipairs(self:GetWeapons()) do
+						wep:SetDimension(targetDim)
+					end
 
 					DimCore.DumpDCT()
 					-- Also update visibility on ALL entities for this player
@@ -245,10 +248,10 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						then
 							continue
 						end
-						if ent == self:GetViewEntity() then
+						if ent == self:GetHands() then
 							continue
 						end
-						if ent == self:GetHands() then
+						if ent == self:GetViewEntity() then
 							continue
 						end
 						if ent:GetClass() == "physgun_beam" and ent:GetOwner() == self then
@@ -274,7 +277,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 		do -- Define SetDimension and GetDimension in Weapon
 			local meta = FindMetaTable("Weapon")
 
-			--[[ meta.SetDimension = function(self, targetDim)
+			meta.SetDimension = function(self, targetDim)
 				if not IsValid(self) then
 					return
 				end
@@ -290,10 +293,8 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					and self:GetOwner().GetDimension
 					and self:GetOwner():GetDimension()
 				then
-					print("[DIMCORE] SetDimension called on ",self," owned by ",self:GetOwner())
 					self:SetNW2String("TNMI_Dimension", self:GetOwner():GetDimension())
 				else
-					print("[DIMCORE] SetDimension called on ",self,", but cannot get dimension of owner. Falling back to default dimension")
 					self:SetNW2String("TNMI_Dimension", DimCore.DEFAULT_DIMENSION)
 				end
 
@@ -309,7 +310,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					end
 					DimCore.RestoreDCT()
 				end)
-			end]]
+			end
 
 			meta.GetDimension = function(self)
 				if
@@ -332,335 +333,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				v:SetDimension(DimCore.DEFAULT_DIMENSION)
 			end
 		end
-		DimCore.RestoreDCT() --]]
-
-		-- Detour ents.GetAll to deal with all Find functions and more
-		do
-			print("[DIMCORE] Detoured ents.GetAll")
-			local detour = ents.GetAll
-			ents.GetAll = function()
-				local caller = DimCore.LookupContext()
-				if not IsValid(caller) or not caller.GetDimension then
-					return detour()
-				end
-
-				local callerDim = caller:GetDimension()
-				local ret = detour()
-				local returnedTable = {}
-				for k, v in ipairs(ret) do
-					if IsValid(v) and v.GetDimension then
-						if v:GetDimension() == callerDim then
-							returnedTable[#returnedTable + 1] = v
-						end
-					end
-				end
-
-				return returnedTable
-			end
-		end
-
-		-- Detour ents.FindInSphere
-		do
-			print("[DIMCORE] Detoured ents.FindInSphere")
-			local detour = ents.FindInSphere
-			ents.FindInSphere = function(origin, radius)
-				local caller = DimCore.LookupContext()
-				if not IsValid(caller) or not caller.GetDimension then
-					return detour(origin, radius)
-				end
-
-				local callerDim = caller:GetDimension()
-				local ret = detour(origin, radius)
-				local returnedTable = {}
-				for k, v in pairs(ret) do
-					if IsValid(v) and v.GetDimension then
-						if v:GetDimension() == callerDim then
-							returnedTable[#returnedTable + 1] = v
-						end
-					end
-				end
-
-				return returnedTable
-			end
-		end
-
-		-- Detour ents.FindInBox
-		do
-			print("[DIMCORE] Detoured ents.FindInBox")
-			local detour = ents.FindInBox
-			ents.FindInBox = function(...)
-				local caller = DimCore.LookupContext()
-				if not IsValid(caller) or not caller.GetDimension then
-					return detour(...)
-				end
-
-				local callerDim = caller:GetDimension()
-				local ret = detour(...)
-				local returnedTable = {}
-				for k, v in pairs(ret) do
-					if IsValid(v) and v.GetDimension then
-						if v:GetDimension() == callerDim then
-							returnedTable[#returnedTable + 1] = v
-						end
-					end
-				end
-
-				return returnedTable
-			end
-		end
-
-		-- Detour ents.FindInCone
-		do
-			print("[DIMCORE] Detoured ents.FindInCone")
-			local detour = ents.FindInCone
-			ents.FindInCone = function(...)
-				local caller = DimCore.LookupContext()
-				if not IsValid(caller) or not caller.GetDimension then
-					return detour(...)
-				end
-
-				local callerDim = caller:GetDimension()
-				local ret = detour(...)
-				local returnedTable = {}
-				for k, v in pairs(ret) do
-					if IsValid(v) and v.GetDimension then
-						if v:GetDimension() == callerDim then
-							returnedTable[#returnedTable + 1] = v
-						end
-					end
-				end
-
-				return returnedTable
-			end
-		end
-		-- More find functions...
-
-		-- Detour ents.Create
-		do
-			print("[DIMCORE] Detoured ents.Create")
-			local detour = ents.Create
-			ents.Create = function(class)
-				local creator = DimCore.LookupContext()
-				if class == "predictive_viewmodel" then print("Viewmodel spawn for ",creator) end
-				local r = detour(class)
-
-				DimCore.PushContext(r)
-				if (not r.SetDimension) or not r.GetDimension then
-					return r
-				end
-
-				if IsValid(creator) then
-					r:SetDimension(creator:GetDimension())
-				end
-
-				return r
-			end
-		end
-
-		-- Detour util.TraceLine
-		do
-			print("[DIMCORE] Detoured util.TraceLine")
-			local detour = util.TraceLine
-			local recursiveDetour
-			recursiveDetour = function(traceConfig, callerDim)
-				local testResult = detour(traceConfig)
-
-				if
-					(
-						testResult.Entity
-						and IsValid(testResult.Entity)
-						and testResult.Entity.GetDimension
-						and testResult.Entity:GetDimension() == callerDim
-					)
-					or testResult.HitWorld
-					or (testResult.Fraction == 1)
-				then
-					return testResult
-				end
-
-				traceConfig.filter[#traceConfig.filter + 1] = testResult.Entity
-
-				return recursiveDetour(traceConfig, callerDim)
-			end
-			util.TraceLine = function(traceConfig)
-				local caller = DimCore.LookupContext()
-				if caller and IsValid(caller) and caller.GetDimension then
-					local callerDim = caller:GetDimension()
-
-					if not traceConfig.filter then
-						traceConfig.filter = {}
-					end
-
-					DimCore.DumpDCT()
-					if isentity(traceConfig.filter) then
-						traceConfig.filter = { traceConfig.filter }
-					elseif istable(traceConfig.filter) then
-						if isstring(traceConfig.filter[1]) then
-							local newFilter = {}
-							for _, blacklistedClass in ipairs(traceConfig.filter) do
-								for _, ent in ipairs(ents.FindByClass(blacklistedClass)) do
-									newFilter[#newFilter + 1] = ent
-								end
-							end
-							traceConfig.filter = newFilter
-						elseif isentity(traceConfig.filter[1]) then
-							-- /shrug
-						end
-					end
-					DimCore.RestoreDCT()
-
-					if isfunction(traceConfig.filter) then
-						local filterDetour = traceConfig.filter
-						traceConfig.filter = function(e)
-							if e.GetDimension and e:GetDimension() ~= callerDim then
-								return false
-							end
-							return filterDetour(e)
-						end
-						return detour(traceConfig)
-					else
-						return recursiveDetour(traceConfig, callerDim)
-					end
-				else
-					return detour(traceConfig)
-				end
-			end
-		end
-
-		do -- Detour net.Broadcast
-			print("[DIMCORE] Detoured net.Broadcast")
-			local detour = net.Broadcast
-			net.Broadcast = function()
-				local targets = {}
-				local caller = DimCore.LookupContext()
-				if not (caller and isentity(caller) and IsValid(caller) and caller.GetDimension) then
-					detour()
-					return
-				end
-				local callerDim = caller:GetDimension()
-
-				for i, ply in ipairs(player.GetAll()) do
-					if ply:GetDimension() == callerDim then
-						targets[#targets + 1] = ply
-					end
-				end
-				return net.Send(targets)
-			end
-		end
-
-		do -- Detour util.Effect
-			print("[DIMCORE] Detoured util.Effect")
-			local detour = util.Effect
-			util.Effect = function(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
-				local caller = DimCore.LookupContext()
-
-				if not (caller and isentity(caller) and IsValid(caller) and caller.GetDimension) then
-					detour(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
-					return
-				end
-
-				local callerDim = caller:GetDimension()
-
-				local allowOverride = allowOverride or true
-				local ignorePredictionOrRecipientFilter = ignorePredictionOrRecipientFilter or nil
-
-				if not ignorePredictionOrRecipientFilter or type(ignorePredictionOrRecipientFilter) == type(true) then
-					ignorePredictionOrRecipientFilter = RecipientFilter()
-					ignorePredictionOrRecipientFilter:AddAllPlayers()
-				end
-
-				for i, ply in ipairs(player.GetAll()) do
-					if ply:GetDimension() ~= callerDim then
-						ignorePredictionOrRecipientFilter:RemovePlayer(ply)
-					end
-				end
-
-				return detour(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
-			end
-		end
-
-		-- Detour timer.Create
-		do
-			print("[DIMCORE] Detoured timer.Create")
-			local detour = timer.Create
-			timer.Create = function(identifier, delay, repetitions, func)
-				local caller = DimCore.LookupContext()
-				local r = detour(identifier, delay, repetitions, function()
-					if caller then
-						DimCore.PushContext(caller)
-					end
-
-					func()
-
-					if caller then
-						DimCore.PopContext()
-					end
-				end)
-
-				return r
-			end
-		end
-
-		-- Detour timer.Simple
-		do
-			print("[DIMCORE] Detoured timer.Simple")
-			local detour = timer.Simple
-			timer.Simple = function(delay, func)
-				local caller = DimCore.LookupContext()
-				local r = detour(delay, function()
-					if caller then
-						DimCore.PushContext(caller)
-					end
-
-					func()
-
-					if caller then
-						DimCore.PopContext()
-					end
-				end)
-
-				return r
-			end
-		end
-
-		-- Detour hook.Add
-		do
-			print("[DIMCORE] Detoured hook.Add")
-			local detour = hook.Add
-			hook.Add = function(eventName, identifier, func)
-				local caller = DimCore.LookupContext()
-				local r = detour(eventName, identifier, function(...)
-					if caller then
-						DimCore.PushContext(caller)
-					end
-					local ret = func(...)
-					if caller then
-						DimCore.PopContext()
-					end
-
-					return ret
-				end)
-				return r
-			end
-		end
-
-		-- Detour hook.Run
-		do
-			print("[DIMCORE] Detoured hook.Run")
-			local detour = hook.Run
-			hook.Run = function(eventName, ...)
-				local caller = DimCore.LookupContext()
-				if caller then
-					DimCore.PushContext(caller)
-				end
-				local r = detour(eventName, ...)
-				if caller then
-					DimCore.PopContext()
-				end
-
-				return r
-			end
-		end
+		DimCore.RestoreDCT()
 
 		hook.Add("OnEntityCreated", "[DIMCORE] Push entity into DCT on spawn", function(ent)
 			-- Nilchecks
@@ -700,7 +373,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 									return
 								end
 							end
-						else
+						elseif member ~= "RunBehaviour" then
 							local detour = body
 							ent:GetTable()[member] = function(...)
 								DimCore.PushContext(ent)
@@ -713,8 +386,336 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				end
 			end)
 		end)
+
+		-- Detour ents.GetAll to deal with all Find functions and more
+		do
+			print("[DIMCORE] Detoured ents.GetAll")
+			local detour = ents.GetAll
+			ents.GetAll = function()
+				local caller = DimCore.LookupContext()
+				if not IsValid(caller) or not caller.GetDimension then
+					return detour()
+				end
+		
+				local callerDim = caller:GetDimension()
+				local ret = detour()
+				local returnedTable = {}
+				for k, v in ipairs(ret) do
+					if IsValid(v) and v.GetDimension then
+						if v:GetDimension() == callerDim then
+							returnedTable[#returnedTable + 1] = v
+						end
+					end
+				end
+		
+				return returnedTable
+			end
+		end
+		
+		-- Detour ents.FindInSphere
+		do
+			print("[DIMCORE] Detoured ents.FindInSphere")
+			local detour = ents.FindInSphere
+			ents.FindInSphere = function(origin, radius)
+				local caller = DimCore.LookupContext()
+				if not IsValid(caller) or not caller.GetDimension then
+					return detour(origin, radius)
+				end
+		
+				local callerDim = caller:GetDimension()
+				local ret = detour(origin, radius)
+				local returnedTable = {}
+				for k, v in pairs(ret) do
+					if IsValid(v) and v.GetDimension then
+						if v:GetDimension() == callerDim then
+							returnedTable[#returnedTable + 1] = v
+						end
+					end
+				end
+		
+				return returnedTable
+			end
+		end
+		
+		-- Detour ents.FindInBox
+		do
+			print("[DIMCORE] Detoured ents.FindInBox")
+			local detour = ents.FindInBox
+			ents.FindInBox = function(...)
+				local caller = DimCore.LookupContext()
+				if not IsValid(caller) or not caller.GetDimension then
+					return detour(...)
+				end
+		
+				local callerDim = caller:GetDimension()
+				local ret = detour(...)
+				local returnedTable = {}
+				for k, v in pairs(ret) do
+					if IsValid(v) and v.GetDimension then
+						if v:GetDimension() == callerDim then
+							returnedTable[#returnedTable + 1] = v
+						end
+					end
+				end
+		
+				return returnedTable
+			end
+		end
+		
+		-- Detour ents.FindInCone
+		do
+			print("[DIMCORE] Detoured ents.FindInCone")
+			local detour = ents.FindInCone
+			ents.FindInCone = function(...)
+				local caller = DimCore.LookupContext()
+				if not IsValid(caller) or not caller.GetDimension then
+					return detour(...)
+				end
+		
+				local callerDim = caller:GetDimension()
+				local ret = detour(...)
+				local returnedTable = {}
+				for k, v in pairs(ret) do
+					if IsValid(v) and v.GetDimension then
+						if v:GetDimension() == callerDim then
+							returnedTable[#returnedTable + 1] = v
+						end
+					end
+				end
+		
+				return returnedTable
+			end
+		end
+		-- More find functions...
+		
+		-- Detour ents.Create
+		do
+			print("[DIMCORE] Detoured ents.Create")
+			local detour = ents.Create
+			ents.Create = function(class)
+				local creator = DimCore.LookupContext()
+				local r = detour(class)
+		
+				DimCore.PushContext(r)
+				if (not r.SetDimension) or not r.GetDimension then
+					return r
+				end
+		
+				if IsValid(creator) then
+					r:SetDimension(creator:GetDimension())
+				end
+		
+				return r
+			end
+		end
+		
+		-- Detour util.TraceLine
+		do
+			print("[DIMCORE] Detoured util.TraceLine")
+			local detour = util.TraceLine
+			local recursiveDetour
+			recursiveDetour = function(traceConfig, callerDim)
+				local testResult = detour(traceConfig)
+		
+				if
+					(
+						testResult.Entity
+						and IsValid(testResult.Entity)
+						and testResult.Entity.GetDimension
+						and testResult.Entity:GetDimension() == callerDim
+					)
+					or testResult.HitWorld
+					or (testResult.Fraction == 1)
+				then
+					return testResult
+				end
+		
+				traceConfig.filter[#traceConfig.filter + 1] = testResult.Entity
+		
+				return recursiveDetour(traceConfig, callerDim)
+			end
+			util.TraceLine = function(traceConfig)
+				local caller = DimCore.LookupContext()
+				if caller and IsValid(caller) and caller.GetDimension then
+					local callerDim = caller:GetDimension()
+		
+					if not traceConfig.filter then
+						traceConfig.filter = {}
+					end
+		
+					DimCore.DumpDCT()
+					if isentity(traceConfig.filter) then
+						traceConfig.filter = { traceConfig.filter }
+					elseif istable(traceConfig.filter) then
+						if isstring(traceConfig.filter[1]) then
+							local newFilter = {}
+							for _, blacklistedClass in ipairs(traceConfig.filter) do
+								for _, ent in ipairs(ents.FindByClass(blacklistedClass)) do
+									newFilter[#newFilter + 1] = ent
+								end
+							end
+							traceConfig.filter = newFilter
+						elseif isentity(traceConfig.filter[1]) then
+							-- /shrug
+						end
+					end
+					DimCore.RestoreDCT()
+		
+					if isfunction(traceConfig.filter) then
+						local filterDetour = traceConfig.filter
+						traceConfig.filter = function(e)
+							if e.GetDimension and e:GetDimension() ~= callerDim then
+								return false
+							end
+							return filterDetour(e)
+						end
+						return detour(traceConfig)
+					else
+						return recursiveDetour(traceConfig, callerDim)
+					end
+				else
+					return detour(traceConfig)
+				end
+			end
+		end
+		
+		do -- Detour net.Broadcast
+			print("[DIMCORE] Detoured net.Broadcast")
+			local detour = net.Broadcast
+			net.Broadcast = function()
+				local targets = {}
+				local caller = DimCore.LookupContext()
+				if not (caller and isentity(caller) and IsValid(caller) and caller.GetDimension) then
+					detour()
+					return
+				end
+				local callerDim = caller:GetDimension()
+		
+				for i, ply in ipairs(player.GetAll()) do
+					if ply:GetDimension() == callerDim then
+						targets[#targets + 1] = ply
+					end
+				end
+				return net.Send(targets)
+			end
+		end
+		
+		do -- Detour util.Effect
+			print("[DIMCORE] Detoured util.Effect")
+			local detour = util.Effect
+			util.Effect = function(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
+				local caller = DimCore.LookupContext()
+		
+				if not (caller and isentity(caller) and IsValid(caller) and caller.GetDimension) then
+					detour(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
+					return
+				end
+		
+				local callerDim = caller:GetDimension()
+		
+				local allowOverride = allowOverride or true
+				local ignorePredictionOrRecipientFilter = ignorePredictionOrRecipientFilter or nil
+		
+				if not ignorePredictionOrRecipientFilter or type(ignorePredictionOrRecipientFilter) == type(true) then
+					ignorePredictionOrRecipientFilter = RecipientFilter()
+					ignorePredictionOrRecipientFilter:AddAllPlayers()
+				end
+		
+				for i, ply in ipairs(player.GetAll()) do
+					if ply:GetDimension() ~= callerDim then
+						ignorePredictionOrRecipientFilter:RemovePlayer(ply)
+					end
+				end
+		
+				return detour(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
+			end
+		end
+		
+		-- Detour timer.Create
+		do
+			print("[DIMCORE] Detoured timer.Create")
+			local detour = timer.Create
+			timer.Create = function(identifier, delay, repetitions, func)
+				local caller = DimCore.LookupContext()
+				local r = detour(identifier, delay, repetitions, function()
+					if caller then
+						DimCore.PushContext(caller)
+					end
+		
+					func()
+		
+					if caller then
+						DimCore.PopContext()
+					end
+				end)
+		
+				return r
+			end
+		end
+		
+		-- Detour timer.Simple
+		do
+			print("[DIMCORE] Detoured timer.Simple")
+			local detour = timer.Simple
+			timer.Simple = function(delay, func)
+				local caller = DimCore.LookupContext()
+				local r = detour(delay, function()
+					if caller then
+						DimCore.PushContext(caller)
+					end
+		
+					func()
+		
+					if caller then
+						DimCore.PopContext()
+					end
+				end)
+		
+				return r
+			end
+		end
+		
+		-- Detour hook.Add
+		do
+			print("[DIMCORE] Detoured hook.Add")
+			local detour = hook.Add
+			hook.Add = function(eventName, identifier, func)
+				local caller = DimCore.LookupContext()
+				local r = detour(eventName, identifier, function(...)
+					if caller then
+						DimCore.PushContext(caller)
+					end
+					local ret = func(...)
+					if caller then
+						DimCore.PopContext()
+					end
+		
+					return ret
+				end)
+				return r
+			end
+		end
+		
+		-- Detour hook.Run
+		do
+			print("[DIMCORE] Detoured hook.Run")
+			local detour = hook.Run
+			hook.Run = function(eventName, ...)
+				local caller = DimCore.LookupContext()
+				if caller then
+					DimCore.PushContext(caller)
+				end
+				local r = detour(eventName, ...)
+				if caller then
+					DimCore.PopContext()
+				end
+		
+				return r
+			end
+		end
 	end)
 end) -- Note: Nothing in this hook will hot-reload.
+
 
 -- Push player onto the context stack when they create an entity using Spawn Menu
 local hookSuffixes = { "Effect", "NPC", "Prop", "Ragdoll", "SENT", "SWEP", "Vehicle" }
