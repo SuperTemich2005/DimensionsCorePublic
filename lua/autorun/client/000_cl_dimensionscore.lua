@@ -36,6 +36,12 @@ hook.Add("OnEntityCreated", "[DIMCORE] Push entity into DCT on spawn", function(
 	end
 end)
 
-hook.Add("OnPlayerChat","[DIMCORE] Suppress extradimensional messages",function(ply,strText)
-	if ply:GetDimension() ~= LocalPlayer():GetDimension() then return true end
+hook.Add("Think","[DIMCORE] Hide extradimensional players",function()
+	for i, ply in ipairs(player.GetAll()) do
+		if not IsValid(ply) then continue end
+		ply:SetNoDraw(ply:GetNW2String("TNMI_Dimension","overworld") ~= LocalPlayer():GetNW2String("TNMI_Dimension","overworld"))
+		ply:SetNotSolid(ply:GetNW2String("TNMI_Dimension","overworld") ~= LocalPlayer():GetNW2String("TNMI_Dimension","overworld"))
+		if not IsValid(ply:GetActiveWeapon()) then continue end
+		ply:GetActiveWeapon():SetNoDraw(ply:GetNW2String("TNMI_Dimension","overworld") ~= LocalPlayer():GetNW2String("TNMI_Dimension","overworld"))
+	end
 end)

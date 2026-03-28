@@ -226,11 +226,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						self:CollisionRulesChanged()
 					end
 
-					-- Handle player's entities (weapons and viewmodels and viewentities)
-					--[[ self:GetViewModel(0):SetDimension(targetDim) -- SetDimension on these doesn't work for some reason.
-					self:GetViewModel(1):SetDimension(targetDim)
-					self:GetViewModel(2):SetDimension(targetDim)
-					self:GetHands():SetDimension(targetDim) ]]
+					-- Pull player's weapons along
 					for _, wep in ipairs(self:GetWeapons()) do
 						wep:SetDimension(targetDim)
 					end
@@ -263,7 +259,10 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 
 					-- Update net visibility of this entity to ALL players
 					for _, ply in ipairs(player.GetAll()) do
-						RecursiveSetPreventTransmit(self, ply, ply:GetDimension() ~= self:GetDimension())
+						local state = ply:GetDimension() ~= self:GetDimension()
+						print("[DIMCORE] Calling RecursiveSetPreventTransmit on ",self," and ",ply," to be ",ply:GetDimension()," ~= ",self:GetDimension()," == ",state)
+						RecursiveSetPreventTransmit(ply, self, state)
+						RecursiveSetPreventTransmit(self, ply, state)
 					end
 					DimCore.RestoreDCT()
 				end)
@@ -730,11 +729,13 @@ end
 
 -- Hooks for putting players in dimensions
 hook.Add("PlayerSpawn", "[DIMCORE] Assign Dimension Values to Players", function(ply)
-	print("[DIMCORE] ", ply, " regular spawn.")
+	print("[DIMCORE] ", ply, " regular spawn. IsValid: ",ply:IsValid())
+	print("DCT Trace")
+	PrintTable(DimCore.ContextStack)
 	ply:SetDimension(DimCore.DEFAULT_DIMENSION, true)
 end)
 hook.Add("PlayerInitialSpawn", "[DIMCORE] Reroute PlayerInitialSpawn call to a generic Spawn", function(ply)
-	print("[DIMCORE] ", ply, " initial spawn.")
+	print("[DIMCORE] ", ply, " initial spawn. IsValid: ",ply:IsValid())
 	--ply:SetDimension(DimCore.DEFAULT_DIMENSION, true)
 end)
 
@@ -769,12 +770,6 @@ end)
 local interactionHook = {
 	"PlayerUse",
 	"PhysgunPickup",
-	"AllowPlayerPickup",
-	"GravGunPickupAllowed",
-	"PlayerCanPickupItem",
-	"PlayerCanHearPlayersVoice",
-	"CanPlayerUnfreeze",
-	"CanPlayerEnterVehicle",
 	"GravGunPunt",
 }
 for k, hookName in ipairs(interactionHook) do
@@ -789,6 +784,28 @@ for k, hookName in ipairs(interactionHook) do
 		end)
 	end)
 end
+
+local permissionHook = {
+	"AllowPlayerPickup",
+	"GravGunPickupAllowed",
+	"PlayerCanPickupItem",
+	"PlayerCanHearPlayersVoice",
+	"CanPlayerUnfreeze",
+	"CanPlayerEnterVehicle"
+}
+for k, hookName in ipairs(permissionHook) do
+	hook.Add(hookName, "[DIMCORE] Modify social interactions", function(ply, ent)
+		if ply:GetDimension() ~= ent:GetDimension() then
+			return false
+		end
+	end)
+end
+
+hook.Add("PlayerCanSeePlayersChat","[DIMCORE] Prevent interdimensional comms",function(text,teamOnly,listener,speaker)
+	if listener:GetDimension() ~= speaker:GetDimension() then
+		return false
+	end
+end)
 
 -- Edge case, if a player is somehow in a vehicle that isnt in the same dimension
 hook.Add("PlayerLeaveVehicle", "[DIMCORE] LeaveVehicle", function(ply, veh)
