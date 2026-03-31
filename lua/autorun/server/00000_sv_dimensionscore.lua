@@ -260,7 +260,18 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					-- Update net visibility of this entity to ALL players
 					for _, ply in ipairs(player.GetAll()) do
 						local state = ply:GetDimension() ~= self:GetDimension()
-						print("[DIMCORE] Calling RecursiveSetPreventTransmit on ",self," and ",ply," to be ",ply:GetDimension()," ~= ",self:GetDimension()," == ",state)
+						print(
+							"[DIMCORE] Calling RecursiveSetPreventTransmit on ",
+							self,
+							" and ",
+							ply,
+							" to be ",
+							ply:GetDimension(),
+							" ~= ",
+							self:GetDimension(),
+							" == ",
+							state
+						)
 						RecursiveSetPreventTransmit(ply, self, state)
 						RecursiveSetPreventTransmit(self, ply, state)
 					end
@@ -395,7 +406,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				if not IsValid(caller) or not caller.GetDimension then
 					return detour()
 				end
-		
+
 				local callerDim = caller:GetDimension()
 				local ret = detour()
 				local returnedTable = {}
@@ -406,11 +417,11 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						end
 					end
 				end
-		
+
 				return returnedTable
 			end
 		end
-		
+
 		-- Detour ents.FindInSphere
 		do
 			print("[DIMCORE] Detoured ents.FindInSphere")
@@ -420,7 +431,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				if not IsValid(caller) or not caller.GetDimension then
 					return detour(origin, radius)
 				end
-		
+
 				local callerDim = caller:GetDimension()
 				local ret = detour(origin, radius)
 				local returnedTable = {}
@@ -431,11 +442,11 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						end
 					end
 				end
-		
+
 				return returnedTable
 			end
 		end
-		
+
 		-- Detour ents.FindInBox
 		do
 			print("[DIMCORE] Detoured ents.FindInBox")
@@ -445,7 +456,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				if not IsValid(caller) or not caller.GetDimension then
 					return detour(...)
 				end
-		
+
 				local callerDim = caller:GetDimension()
 				local ret = detour(...)
 				local returnedTable = {}
@@ -456,11 +467,11 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						end
 					end
 				end
-		
+
 				return returnedTable
 			end
 		end
-		
+
 		-- Detour ents.FindInCone
 		do
 			print("[DIMCORE] Detoured ents.FindInCone")
@@ -470,7 +481,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				if not IsValid(caller) or not caller.GetDimension then
 					return detour(...)
 				end
-		
+
 				local callerDim = caller:GetDimension()
 				local ret = detour(...)
 				local returnedTable = {}
@@ -481,12 +492,12 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						end
 					end
 				end
-		
+
 				return returnedTable
 			end
 		end
 		-- More find functions...
-		
+
 		-- Detour ents.Create
 		do
 			print("[DIMCORE] Detoured ents.Create")
@@ -494,20 +505,20 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 			ents.Create = function(class)
 				local creator = DimCore.LookupContext()
 				local r = detour(class)
-		
+
 				DimCore.PushContext(r)
 				if (not r.SetDimension) or not r.GetDimension then
 					return r
 				end
-		
+
 				if IsValid(creator) then
 					r:SetDimension(creator:GetDimension())
 				end
-		
+
 				return r
 			end
 		end
-		
+
 		-- Detour util.TraceLine
 		do
 			print("[DIMCORE] Detoured util.TraceLine")
@@ -515,7 +526,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 			local recursiveDetour
 			recursiveDetour = function(traceConfig, callerDim)
 				local testResult = detour(traceConfig)
-		
+
 				if
 					(
 						testResult.Entity
@@ -528,20 +539,20 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				then
 					return testResult
 				end
-		
+
 				traceConfig.filter[#traceConfig.filter + 1] = testResult.Entity
-		
+
 				return recursiveDetour(traceConfig, callerDim)
 			end
 			util.TraceLine = function(traceConfig)
 				local caller = DimCore.LookupContext()
 				if caller and IsValid(caller) and caller.GetDimension then
 					local callerDim = caller:GetDimension()
-		
+
 					if not traceConfig.filter then
 						traceConfig.filter = {}
 					end
-		
+
 					DimCore.DumpDCT()
 					if isentity(traceConfig.filter) then
 						traceConfig.filter = { traceConfig.filter }
@@ -559,7 +570,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 						end
 					end
 					DimCore.RestoreDCT()
-		
+
 					if isfunction(traceConfig.filter) then
 						local filterDetour = traceConfig.filter
 						traceConfig.filter = function(e)
@@ -577,7 +588,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				end
 			end
 		end
-		
+
 		do -- Detour net.Broadcast
 			print("[DIMCORE] Detoured net.Broadcast")
 			local detour = net.Broadcast
@@ -589,7 +600,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					return
 				end
 				local callerDim = caller:GetDimension()
-		
+
 				for i, ply in ipairs(player.GetAll()) do
 					if ply:GetDimension() == callerDim then
 						targets[#targets + 1] = ply
@@ -598,38 +609,38 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				return net.Send(targets)
 			end
 		end
-		
+
 		do -- Detour util.Effect
 			print("[DIMCORE] Detoured util.Effect")
 			local detour = util.Effect
 			util.Effect = function(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
 				local caller = DimCore.LookupContext()
-		
+
 				if not (caller and isentity(caller) and IsValid(caller) and caller.GetDimension) then
 					detour(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
 					return
 				end
-		
+
 				local callerDim = caller:GetDimension()
-		
+
 				local allowOverride = allowOverride or true
 				local ignorePredictionOrRecipientFilter = ignorePredictionOrRecipientFilter or nil
-		
+
 				if not ignorePredictionOrRecipientFilter or type(ignorePredictionOrRecipientFilter) == type(true) then
 					ignorePredictionOrRecipientFilter = RecipientFilter()
 					ignorePredictionOrRecipientFilter:AddAllPlayers()
 				end
-		
+
 				for i, ply in ipairs(player.GetAll()) do
 					if ply:GetDimension() ~= callerDim then
 						ignorePredictionOrRecipientFilter:RemovePlayer(ply)
 					end
 				end
-		
+
 				return detour(effectName, effectData, allowOverride, ignorePredictionOrRecipientFilter)
 			end
 		end
-		
+
 		-- Detour timer.Create
 		do
 			print("[DIMCORE] Detoured timer.Create")
@@ -640,18 +651,18 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					if caller then
 						DimCore.PushContext(caller)
 					end
-		
+
 					func()
-		
+
 					if caller then
 						DimCore.PopContext()
 					end
 				end)
-		
+
 				return r
 			end
 		end
-		
+
 		-- Detour timer.Simple
 		do
 			print("[DIMCORE] Detoured timer.Simple")
@@ -662,18 +673,18 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					if caller then
 						DimCore.PushContext(caller)
 					end
-		
+
 					func()
-		
+
 					if caller then
 						DimCore.PopContext()
 					end
 				end)
-		
+
 				return r
 			end
 		end
-		
+
 		-- Detour hook.Add
 		do
 			print("[DIMCORE] Detoured hook.Add")
@@ -688,13 +699,13 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 					if caller then
 						DimCore.PopContext()
 					end
-		
+
 					return ret
 				end)
 				return r
 			end
 		end
-		
+
 		-- Detour hook.Run
 		do
 			print("[DIMCORE] Detoured hook.Run")
@@ -708,16 +719,15 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 				if caller then
 					DimCore.PopContext()
 				end
-		
+
 				return r
 			end
 		end
 	end)
 end) -- Note: Nothing in this hook will hot-reload.
 
-
 -- Push player onto the context stack when they create an entity using Spawn Menu
-local hookSuffixes = { "Effect", "NPC", "Prop", "Ragdoll", "SENT", "SWEP", "Vehicle" }
+local hookSuffixes = { "effect", "NPC", "Prop", "Ragdoll", "SENT", "SWEP", "Vehicle" }
 for _, hookname in pairs(hookSuffixes) do
 	hook.Add("PlayerSpawn" .. hookname, "[DIMCORE] Push player onto DCT on spawnmenu use", function(ply)
 		DimCore.PushContext(ply)
@@ -729,13 +739,13 @@ end
 
 -- Hooks for putting players in dimensions
 hook.Add("PlayerSpawn", "[DIMCORE] Assign Dimension Values to Players", function(ply)
-	print("[DIMCORE] ", ply, " regular spawn. IsValid: ",ply:IsValid())
+	print("[DIMCORE] ", ply, " regular spawn. IsValid: ", ply:IsValid())
 	print("DCT Trace")
 	PrintTable(DimCore.ContextStack)
 	ply:SetDimension(DimCore.DEFAULT_DIMENSION, true)
 end)
 hook.Add("PlayerInitialSpawn", "[DIMCORE] Reroute PlayerInitialSpawn call to a generic Spawn", function(ply)
-	print("[DIMCORE] ", ply, " initial spawn. IsValid: ",ply:IsValid())
+	print("[DIMCORE] ", ply, " initial spawn. IsValid: ", ply:IsValid())
 	--ply:SetDimension(DimCore.DEFAULT_DIMENSION, true)
 end)
 
@@ -791,7 +801,7 @@ local permissionHook = {
 	"PlayerCanPickupItem",
 	"PlayerCanHearPlayersVoice",
 	"CanPlayerUnfreeze",
-	"CanPlayerEnterVehicle"
+	"CanPlayerEnterVehicle",
 }
 for k, hookName in ipairs(permissionHook) do
 	hook.Add(hookName, "[DIMCORE] Modify social interactions", function(ply, ent)
@@ -801,11 +811,15 @@ for k, hookName in ipairs(permissionHook) do
 	end)
 end
 
-hook.Add("PlayerCanSeePlayersChat","[DIMCORE] Prevent interdimensional comms",function(text,teamOnly,listener,speaker)
-	if listener:GetDimension() ~= speaker:GetDimension() then
-		return false
+hook.Add(
+	"PlayerCanSeePlayersChat",
+	"[DIMCORE] Prevent interdimensional comms",
+	function(text, teamOnly, listener, speaker)
+		if listener:GetDimension() ~= speaker:GetDimension() then
+			return false
+		end
 	end
-end)
+)
 
 -- Edge case, if a player is somehow in a vehicle that isnt in the same dimension
 hook.Add("PlayerLeaveVehicle", "[DIMCORE] LeaveVehicle", function(ply, veh)
