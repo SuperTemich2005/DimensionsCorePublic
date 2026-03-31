@@ -727,7 +727,7 @@ hook.Add("InitPostEntity", "[DIMCORE] Detour Entity table functions", function()
 end) -- Note: Nothing in this hook will hot-reload.
 
 -- Push player onto the context stack when they create an entity using Spawn Menu
-local hookSuffixes = { "effect", "NPC", "Prop", "Ragdoll", "SENT", "SWEP", "Vehicle" }
+local hookSuffixes = { "Effect", "NPC", "Prop", "Ragdoll", "SENT", "SWEP", "Vehicle" }
 for _, hookname in pairs(hookSuffixes) do
 	hook.Add("PlayerSpawn" .. hookname, "[DIMCORE] Push player onto DCT on spawnmenu use", function(ply)
 		DimCore.PushContext(ply)
